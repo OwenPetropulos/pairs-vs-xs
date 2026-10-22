@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ["pvx/**", "run.py", "tests.py", "requirements.txt", ".github/workflows/**"]
+    paths: ["pvx/**", "run.py", "tests.py", "requirements.txt", "debug_facts.py", ".github/workflows/**"]
 
 permissions:
   contents: write
@@ -29,6 +29,7 @@ jobs:
       - run: python run.py 2>&1 | tee results_log.txt
         env:
           SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+      - run: python debug_facts.py
       - name: Commit results
         run: |
           mkdir -p results && mv results_log.txt results/run_log.txt

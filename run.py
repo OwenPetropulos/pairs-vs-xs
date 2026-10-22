@@ -64,12 +64,18 @@ def main():
         summaries[src] = D.pair_summary(res, tables[src], key, S[f"{src}_pairs"], pair_corr,
                                         sig["gaps"][src])
 
+    ic = D.signal_ic(prices.adj, S, sig["dates"])
     found = D.findings(M, summaries, tables, sub)
+    for name in ic["Signal"].unique():
+        r = ic[ic["Signal"] == name].set_index("Horizon (m)")
+        found.append(f"{name}: rank IC vs forward relative return "
+                     + ", ".join(f"{k}m {r.loc[k, 'Mean IC']:+.3f} (t {r.loc[k, 't-stat']:+.1f})" for k in r.index) + ".")
 
     out = C.OUTPUT_DIR
     M.to_csv(f"{out}/metrics.csv")
     sub.to_csv(f"{out}/subperiod_sharpe.csv")
     corr.to_csv(f"{out}/strategy_correlations.csv")
+    ic.to_csv(f"{out}/signal_ic.csv", index=False)
     pd.DataFrame({k: r["nav"] for k, r in res.items()}).to_csv(f"{out}/nav.csv")
     for src in ("fund", "price"):
         summaries[src].to_csv(f"{out}/pair_summary_{src}.csv")
@@ -78,7 +84,7 @@ def main():
         S[f"{src}_xs"].to_csv(f"{out}/signal_{src}_xs.csv")
 
     report.build(f"{out}/report.html", res, M, sub, roll, corr, attrs, summaries, tables,
-                 S, pair_corr, found, sig["metrics"], args.synthetic)
+                 S, pair_corr, found, sig["metrics"], args.synthetic, ic)
 
     pd.set_option("display.width", 200)
     print()

@@ -98,7 +98,8 @@ def _table(df: pd.DataFrame, fmt: dict, index_name="", highlight_col=None) -> st
 
 def build(out_path: str, res: dict, M: pd.DataFrame, sub: pd.DataFrame, roll: pd.DataFrame,
           corr: pd.DataFrame, attrs: dict, summaries: dict, tables: dict, sigs: dict,
-          pair_corr: pd.DataFrame, findings: list[str], metrics_used: dict, synthetic: bool):
+          pair_corr: pd.DataFrame, findings: list[str], metrics_used: dict, synthetic: bool,
+          ic: pd.DataFrame | None = None):
     charts = {}
 
     # 1. Equity curves
@@ -188,6 +189,13 @@ def build(out_path: str, res: dict, M: pd.DataFrame, sub: pd.DataFrame, roll: pd
             "Half-life 1st (m)": "{:.1f}", "Half-life 2nd (m)": "{:.1f}", "Avg hold (m)": "{:.1f}",
             "% months |z|>stop": "{:.0%}", "Corr 1st half": "{:.2f}", "Corr 2nd half": "{:.2f}",
             "_signed": ["Total contrib", "Stop-out P&L", "Contrib 1st half", "Contrib 2nd half"]}
+    t_ic = ""
+    if ic is not None:
+        icd = ic.copy()
+        icd.index = icd["Signal"] + " · " + icd["Horizon (m)"].astype(str) + "m"
+        icd = icd[["Mean IC", "t-stat", "% months IC>0", "N"]]
+        t_ic = _table(icd, {"Mean IC": "{:+.3f}", "t-stat": "{:+.2f}", "% months IC>0": "{:.0%}", "N": "{:.0f}",
+                            "_signed": ["Mean IC", "t-stat"]}, "Signal · horizon")
     t_pf = _table(summaries["fund"], pfmt, "Pair")
     t_pp = _table(summaries["price"], pfmt, "Pair")
 
@@ -257,6 +265,11 @@ These books are roughly market-neutral, so judge them on Sharpe and drawdown, no
 {t_metrics}
 {t_sub}
 {t_corr}
+
+<h2>Does cheapness predict anything?</h2>
+<p class="note">Before any trading rule: the rank correlation between each month's cheapness score and the
+forward relative return. Positive means cheap names went on to outperform. Windows don't overlap.</p>
+{t_ic}
 
 <h2>Is the edge stable?</h2>
 <div id="roll" class="chart"></div>

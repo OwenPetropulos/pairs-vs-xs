@@ -85,6 +85,42 @@ def strategy_correlations(res: dict) -> pd.DataFrame:
     return m.corr()
 
 
+def signal_ic(adj: pd.DataFrame, S: dict, dates: pd.DatetimeIndex,
+              horizons=(1, 3, 6, 12)) -> pd.DataFrame:
+    """
+    Does cheapness predict relative returns at all, before any trading rule?
+    Each month: rank correlation between the cheapness z-score and the forward
+    k-month relative return (pairs: A minus B; cross-section: stock minus the
+    universe average). Months are sampled every k so windows don't overlap,
+    and the t-stat is mean / (sd / sqrt(n)).
+    """
+    px = adj.reindex(dates)
+    rows = []
+    for name, key in (("Pairs · fundamental", "fund_pairs"), ("Cross-section · fundamental", "fund_xs"),
+                      ("Pairs · spread", "price_pairs"), ("Cross-section · spread", "price_xs")):
+        z = S[key]
+        for k in horizons:
+            fwd = px.shift(-k) / px - 1
+            if key.endswith("pairs"):
+                rel = pd.DataFrame({p: fwd[p.split("/")[0]] - fwd[p.split("/")[1]] for p in z.columns})
+            else:
+                f = fwd[z.columns]
+                rel = f.sub(f.mean(axis=1), axis=0)
+            ics = []
+            for d in z.index[::k]:
+                a, b = z.loc[d], rel.loc[d] if d in rel.index else None
+                if b is None:
+                    continue
+                m = a.notna() & b.notna()
+                if m.sum() >= 6:
+                    ics.append(a[m].rank().corr(b[m].rank()))
+            ics = pd.Series(ics).dropna()
+            rows.append({"Signal": name, "Horizon (m)": k, "Mean IC": ics.mean(),
+                         "t-stat": ics.mean() / ics.std() * np.sqrt(len(ics)) if len(ics) > 2 else np.nan,
+                         "% months IC>0": (ics > 0).mean(), "N": len(ics)})
+    return pd.DataFrame(rows)
+
+
 # ---------------------------------------------------------------------------
 # Pair-level breakdown
 # ---------------------------------------------------------------------------

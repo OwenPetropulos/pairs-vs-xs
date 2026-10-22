@@ -16,33 +16,42 @@ SEC_USER_AGENT = os.environ.get("SEC_USER_AGENT", "YOUR NAME your_email@example.
 # Universe: sibling pairs, fixed ex ante.
 #
 # metric:
+#   "ep"      -> earnings yield, TTM net income / market cap   (used for all pairs)
 #   "ev_ebit" -> operating earnings yield on enterprise value, EBIT / EV
-#   "ep"      -> earnings yield, TTM net income / market cap
-# Banks use "ep" because EV and operating income are not meaningful for them.
+#
+# Every pair uses E/P. The first real run showed EBIT/EV can't be built
+# consistently from EDGAR for this universe: oil majors, pharma and banks don't
+# report an operating-income line, and debt tags change names across years.
+# Net income and share counts are reported by everyone, so E/P keeps the
+# pairs and cross-sectional books on exactly the same measure.
 #
 # Selection-bias warning: these pairs are chosen today. Every one of them still
 # exists in 2026 as a recognisable pair, which flatters the backtest. Say so in
 # the writeup.
 # ---------------------------------------------------------------------------
 PAIRS = [
-    ("KO",  "PEP", "ev_ebit"),   # beverages
-    ("HD",  "LOW", "ev_ebit"),   # home improvement
-    ("MCD", "YUM", "ev_ebit"),   # QSR (Burger King sits inside QSR/RBI; YUM is cleaner)
-    ("V",   "MA",  "ev_ebit"),   # card networks
-    ("UPS", "FDX", "ev_ebit"),   # parcel
-    ("XOM", "CVX", "ev_ebit"),   # integrated oil
+    ("KO",  "PEP", "ep"),        # beverages
+    ("HD",  "LOW", "ep"),        # home improvement
+    ("MCD", "YUM", "ep"),        # QSR (Burger King sits inside QSR/RBI; YUM is cleaner)
+    ("V",   "MA",  "ep"),        # card networks
+    ("UPS", "FDX", "ep"),        # parcel
+    ("XOM", "CVX", "ep"),        # integrated oil
     ("JPM", "BAC", "ep"),        # money-centre banks
-    ("CAT", "DE",  "ev_ebit"),   # heavy machinery
-    ("LMT", "NOC", "ev_ebit"),   # defense primes
-    ("DAL", "UAL", "ev_ebit"),   # airlines
-    ("UNP", "CSX", "ev_ebit"),   # rail
-    ("WMT", "TGT", "ev_ebit"),   # big-box retail
-    ("PG",  "CL",  "ev_ebit"),   # household products
-    ("MRK", "PFE", "ev_ebit"),   # pharma
-    ("T",   "VZ",  "ev_ebit"),   # telecom
+    ("CAT", "DE",  "ep"),        # heavy machinery
+    ("LMT", "NOC", "ep"),        # defense primes
+    ("DAL", "UAL", "ep"),        # airlines
+    ("UNP", "CSX", "ep"),        # rail
+    ("WMT", "TGT", "ep"),        # big-box retail
+    ("PG",  "CL",  "ep"),        # household products
+    ("MRK", "PFE", "ep"),        # pharma
+    ("T",   "VZ",  "ep"),        # telecom
 ]
 
 BENCHMARK = "SPY"
+
+# Companies whose XBRL history is split across more than one SEC CIK.
+# ExxonMobil's pre-2025 filings sit under CIK 34088.
+EXTRA_CIKS = {"XOM": [34088]}
 
 # ---------------------------------------------------------------------------
 # Dates

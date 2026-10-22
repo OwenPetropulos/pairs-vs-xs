@@ -12,12 +12,12 @@ import os
 import re
 
 KEEP = re.compile(r"(OperatingIncome|NetIncome|ProfitLoss|SharesOutstanding|Debt|Borrowing|"
-                  r"CommercialPaper|Cash|Revenue|IncomeLossFromContinuing|DepreciationDepletion)", re.I)
+                  r"CommercialPaper|Cash|Revenue|IncomeLossFromContinuing|DepreciationDepletion|EarningsPerShare)", re.I)
 FORMS = {"10-Q", "10-K", "10-Q/A", "10-K/A", "10-KT"}
 
 out = {}
 for path in sorted(glob.glob("data_cache/facts_*.json")):
-    t = os.path.basename(path)[6:-5]
+    t = os.path.basename(path)[:-5].split("_")[-1]
     with open(path) as f:
         facts = json.load(f)["facts"]
     keep = {}

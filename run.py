@@ -36,8 +36,8 @@ def main():
         print("2/5 fundamentals (SEC EDGAR, point-in-time)")
         fdates = signals.rebalance_dates(prices.adj.index)
         yields = data.load_fundamentals(prices, fdates, refresh=args.refresh)
-        cov = yields["ev_ebit"].loc[C.BACKTEST_START:].notna().mean()
-        print("  EBIT/EV coverage since backtest start:")
+        cov = yields["ep"].loc[C.BACKTEST_START:].notna().mean()
+        print("  E/P coverage since backtest start:")
         print(cov.sort_values().to_string(float_format=lambda x: f"{x:.0%}"))
 
     print("3/5 signals")

@@ -126,13 +126,35 @@ def _cik_map() -> dict:
     return {v["ticker"].upper(): int(v["cik_str"]) for v in data.values()}
 
 
+def _merge_facts(a: dict, b: dict) -> dict:
+    """Union of two companyfacts payloads (same company filed under two CIKs)."""
+    out = json.loads(json.dumps(a))
+    for tax, tags in b.get("facts", {}).items():
+        dst = out.setdefault("facts", {}).setdefault(tax, {})
+        for tag, body in tags.items():
+            d = dst.setdefault(tag, {"units": {}})
+            for unit, ents in body.get("units", {}).items():
+                cur = d["units"].setdefault(unit, [])
+                seen = {(e.get("start"), e["end"], e["filed"], e.get("form")) for e in cur}
+                cur += [e for e in ents if (e.get("start"), e["end"], e["filed"], e.get("form")) not in seen]
+    return out
+
+
 def company_facts(ticker: str, refresh: bool = False) -> dict:
-    path = _cache_path(f"facts_{ticker}.json")
+    path = _cache_path(f"facts_v2_{ticker}.json")
     if os.path.exists(path) and not refresh:
         with open(path) as f:
             return json.load(f)
-    cik = _cik_map()[ticker.replace("-", ".").upper()]
-    data = _sec_get(f"https://data.sec.gov/api/xbrl/companyfacts/CIK{cik:010d}.json")
+    ciks = [_cik_map()[ticker.replace("-", ".").upper()]]
+    ciks += [c for c in C.EXTRA_CIKS.get(ticker, []) if c not in ciks]
+    data = None
+    for cik in ciks:
+        try:
+            d = _sec_get(f"https://data.sec.gov/api/xbrl/companyfacts/CIK{cik:010d}.json")
+        except Exception as e:  # an extra CIK may have no XBRL facts
+            print(f"  {ticker}: CIK {cik} unavailable ({e})")
+            continue
+        data = d if data is None else _merge_facts(data, d)
     with open(path, "w") as f:
         json.dump(data, f)
     return data
@@ -282,6 +304,8 @@ def fundamentals_for(ticker: str, dates: pd.DatetimeIndex, prices: PriceData) ->
     ni_q = _quarters(facts, TAGS["ni"])
     sh_q = _quarters(facts, TAGS["shares_q"], unit="shares", additive=False)
     sh_dei = _instants(facts, ["EntityCommonStockSharesOutstanding"], taxonomy="dei", unit="shares")
+    sh_inst = _instants(facts, ["CommonStockSharesOutstanding"], unit="shares")
+    floats = _instants(facts, ["EntityPublicFloat"], taxonomy="dei")
     ltd_total = _instants(facts, TAGS["ltd_total"])
     ltd_nc = _instants(facts, TAGS["ltd_nc"])
     ltd_cur = _instants(facts, TAGS["ltd_cur"])
@@ -301,9 +325,18 @@ def fundamentals_for(ticker: str, dates: pd.DatetimeIndex, prices: PriceData) ->
         if np.isnan(shares):
             shares, asof = _latest_asof(sh_dei, d)
         if np.isnan(shares):
-            out.append((d, np.nan, np.nan, np.nan))
-            continue
-        mcap = shares * p * prices.splits_after(ticker, asof)
+            shares, asof = _latest_asof(sh_inst, d)
+        if not np.isnan(shares):
+            mcap = shares * p * prices.splits_after(ticker, asof)
+        else:
+            # Last resort (Visa reports no total share count): scale the annual
+            # public float by the price move since its measurement date.
+            flt, fdate = _latest_asof(floats, d, max_age_days=600)
+            pf = close.loc[:fdate].dropna() if fdate is not None else pd.Series(dtype=float)
+            if np.isnan(flt) or pf.empty:
+                out.append((d, np.nan, np.nan, np.nan))
+                continue
+            mcap = flt * p / float(pf.iloc[-1])
 
         ni = _ttm_asof(ni_q, d)
         ebit = _ttm_asof(ebit_q, d)

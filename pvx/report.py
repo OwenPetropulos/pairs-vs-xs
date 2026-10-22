@@ -277,9 +277,9 @@ return correlation (right axis). Bottom panel = this pair's fundamental P&amp;L 
 
 <h2>Method</h2>
 <div class="note">
-<p><b>Signals.</b> Fundamental: operating earnings yield on EV (TTM EBIT / EV) from SEC EDGAR, rebuilt
-point-in-time by filing date; banks and pairs with thin EBIT coverage use TTM earnings yield
-(fallback pairs: {html.escape(metric_note)}). Pairs gap = yield<sub>A</sub> − yield<sub>B</sub>; cross-sectional
+<p><b>Signals.</b> Fundamental: earnings yield (TTM net income / market cap) from SEC EDGAR, rebuilt
+point-in-time by filing date. EBIT/EV was the original plan, but oil majors, pharma and banks report no
+operating-income line and debt tags change names over time, so E/P is the one measure every name supports. Pairs gap = yield<sub>A</sub> − yield<sub>B</sub>; cross-sectional
 gap = yield<sub>i</sub> − universe median. Each gap is z-scored over a trailing {C.FUND_Z_WINDOW} months.
 Spread: pairs gap = log P<sub>A</sub> − log P<sub>B</sub>; cross-sectional gap = log P<sub>i</sub> − mean log P;
 z-scored over {C.PRICE_Z_WINDOW} trading days and sign-flipped so positive = cheap.</p>
@@ -288,7 +288,9 @@ z-scored over {C.PRICE_Z_WINDOW} trading days and sign-flipped so positive = che
 L/S: long cheapest third, short richest third, 100% of capital per leg. Signals at month-end close, trades at the
 next close. Cash earns zero, so Sharpe ratios are on total, not excess, returns.</p>
 <p><b>Known biases.</b> The pair list is chosen with hindsight (all 15 pairs survive to today). EDGAR XBRL tags vary by
-company and year, so some fundamental gaps are noisy. Market cap uses diluted weighted shares from the latest quarter.</p>
+company and year, so some fundamental gaps are noisy. Market cap uses diluted weighted shares from the latest quarter;
+Visa reports no total share count, so its market cap is scaled from its annual public float, which leaves out
+its class B and C shares.</p>
 </div>
 </main>
 <script>
